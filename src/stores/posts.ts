@@ -59,7 +59,7 @@ export const usePostsStore = defineStore('posts', () => {
   const updatePost = (id: number, updates: Partial<Post>) => {
     const index = posts.value.findIndex(p => p.id === id)
     if (index !== -1) {
-      posts.value[index] = { ...posts.value[index], ...updates }
+      posts.value[index] = { ...posts.value[index], ...updates } as Post
       savePosts()
     }
   }
