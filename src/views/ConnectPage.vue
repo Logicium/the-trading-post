@@ -84,41 +84,49 @@ const canConfirmTransaction = computed(() => {
   // If transaction is already completed, can't confirm again
   if (transaction.value.status === 'completed') return false
   
-  // For OFFER posts: Person who connected (receiver) confirms
-  if (post.value.type === 'offer') {
-    return transaction.value.receiver.id === userStore.currentUser.id && !transaction.value.receiverConfirmed
-  }
+  const isProvider = transaction.value.provider.id === userStore.currentUser.id
+  const isReceiver = transaction.value.receiver.id === userStore.currentUser.id
   
-  // For REQUEST posts: Post author (receiver) confirms
-  if (post.value.type === 'request') {
-    return transaction.value.receiver.id === userStore.currentUser.id && !transaction.value.receiverConfirmed
-  }
+  // Provider can confirm if they haven't already
+  if (isProvider && !transaction.value.providerConfirmed) return true
+  
+  // Receiver can confirm if they haven't already
+  if (isReceiver && !transaction.value.receiverConfirmed) return true
   
   return false
 })
 
 const transactionStatusText = computed(() => {
-  if (!transaction.value) return ''
+  if (!transaction.value || !userStore.currentUser) return ''
   
   if (transaction.value.status === 'completed') {
     return '✓ Transaction completed'
   }
   
+  const isProvider = transaction.value.provider.id === userStore.currentUser.id
+  const currentUserConfirmed = isProvider 
+    ? transaction.value.providerConfirmed 
+    : transaction.value.receiverConfirmed
+  
+  if (currentUserConfirmed) {
+    return 'Waiting for other party to confirm'
+  }
+  
   if (transaction.value.providerConfirmed && !transaction.value.receiverConfirmed) {
-    return 'Waiting for confirmation from receiver'
+    return 'Provider confirmed, waiting for receiver'
   }
   
   if (!transaction.value.providerConfirmed && transaction.value.receiverConfirmed) {
-    return 'Waiting for confirmation from provider'
+    return 'Receiver confirmed, waiting for provider'
   }
   
-  return 'Waiting for confirmation'
+  return 'Waiting for both parties to confirm'
 })
 
 const confirmTransaction = async () => {
   if (!transaction.value || !canConfirmTransaction.value) return
   
-  if (!confirm('Confirm that this service has been completed? This will transfer time credits.')) {
+  if (!confirm('Confirm that this service has been completed? Both parties must confirm before time credits are transferred.')) {
     return
   }
   
@@ -126,13 +134,19 @@ const confirmTransaction = async () => {
     const updated = await transactionApi.confirmTransaction(transaction.value.id)
     transaction.value = updated
     
-    // Refresh user data to show updated balance
-    await userStore.refreshUser()
+    // If transaction is now completed, refresh user balance
+    if (updated.status === 'completed') {
+      await userStore.refreshUser()
+      alert('Transaction completed! Time credits have been transferred.')
+    } else {
+      alert('Your confirmation has been recorded. Waiting for the other party to confirm.')
+    }
     
-    alert('Transaction confirmed! Time credits have been updated.')
-  } catch (error) {
+    // Reload conversations to update status
+    await messagesStore.initializeMessages()
+  } catch (error: any) {
     console.error('Failed to confirm transaction:', error)
-    alert('Failed to confirm transaction. Please try again.')
+    alert(error.message || 'Failed to confirm transaction. Please try again.')
   }
 }
 
