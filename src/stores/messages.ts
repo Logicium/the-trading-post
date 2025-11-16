@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { messageApi } from '../services/api'
 
 export interface Message {
-  id: number
-  conversationId: number
+  id: string
+  conversationId: string
   senderId: string
   senderName: string
   text: string
@@ -12,11 +13,15 @@ export interface Message {
 }
 
 export interface Conversation {
-  id: number
-  postId: number
+  id: string
+  postId: string
   postTitle: string
   postAuthor: string
   participants: string[]
+  otherParticipant?: {
+    id: string
+    name: string
+  }
   lastMessage: string
   lastMessageTime: string
   unreadCount: number
@@ -26,35 +31,23 @@ export const useMessagesStore = defineStore('messages', () => {
   // State
   const messages = ref<Message[]>([])
   const conversations = ref<Conversation[]>([])
+  const isLoading = ref<boolean>(false)
+  const error = ref<string | null>(null)
 
-  // Initialize from localStorage
-  const initializeMessages = () => {
-    const storedMessages = localStorage.getItem('trading-post-messages')
-    const storedConversations = localStorage.getItem('trading-post-conversations')
-    
-    if (storedMessages) {
-      try {
-        messages.value = JSON.parse(storedMessages)
-      } catch (e) {
-        console.error('Failed to parse messages', e)
-        messages.value = []
-      }
+  // Initialize messages from API
+  const initializeMessages = async () => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const data = await messageApi.getConversations()
+      conversations.value = data
+    } catch (e: any) {
+      console.error('Failed to load conversations', e)
+      error.value = e.message
+      conversations.value = []
+    } finally {
+      isLoading.value = false
     }
-    
-    if (storedConversations) {
-      try {
-        conversations.value = JSON.parse(storedConversations)
-      } catch (e) {
-        console.error('Failed to parse conversations', e)
-        conversations.value = []
-      }
-    }
-  }
-
-  // Save to localStorage
-  const saveMessages = () => {
-    localStorage.setItem('trading-post-messages', JSON.stringify(messages.value))
-    localStorage.setItem('trading-post-conversations', JSON.stringify(conversations.value))
   }
 
   // Getters
@@ -67,15 +60,15 @@ export const useMessagesStore = defineStore('messages', () => {
   })
 
   const getConversationById = computed(() => {
-    return (id: number) => conversations.value.find(c => c.id === id)
+    return (id: string) => conversations.value.find(c => c.id === id)
   })
 
   const getConversationByPostId = computed(() => {
-    return (postId: number) => conversations.value.find(c => c.postId === postId)
+    return (postId: string) => conversations.value.find(c => c.postId === postId)
   })
 
   const getMessagesByConversation = computed(() => {
-    return (conversationId: number) => 
+    return (conversationId: string) => 
       messages.value.filter(m => m.conversationId === conversationId)
   })
 
@@ -84,78 +77,102 @@ export const useMessagesStore = defineStore('messages', () => {
   })
 
   // Actions
-  const createConversation = (postId: number, postTitle: string, postAuthor: string, currentUser: string) => {
-    const existing = conversations.value.find(c => c.postId === postId)
-    if (existing) return existing
-
-    const newConv: Conversation = {
-      id: Math.max(0, ...conversations.value.map(c => c.id)) + 1,
-      postId,
-      postTitle,
-      postAuthor,
-      participants: [currentUser, postAuthor],
-      lastMessage: '',
-      lastMessageTime: new Date().toISOString(),
-      unreadCount: 0
+  const createConversation = async (postId: string) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const newConv = await messageApi.createConversation(postId)
+      
+      // Check if conversation already exists in local state
+      const existing = conversations.value.find(c => c.id === newConv.id)
+      if (!existing) {
+        conversations.value.push(newConv)
+      }
+      
+      return newConv
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
     }
-    
-    conversations.value.push(newConv)
-    saveMessages()
-    return newConv
   }
 
-  const addMessage = (conversationId: number, senderId: string, senderName: string, text: string) => {
-    const newMessage: Message = {
-      id: Math.max(0, ...messages.value.map(m => m.id)) + 1,
-      conversationId,
-      senderId,
-      senderName,
-      text,
-      timestamp: new Date().toISOString(),
-      read: false
+  const loadMessages = async (conversationId: string) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const data = await messageApi.getMessages(conversationId)
+      
+      // Replace messages for this conversation
+      messages.value = messages.value.filter(m => m.conversationId !== conversationId)
+      messages.value.push(...data)
+      
+      return data
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
     }
-    
-    messages.value.push(newMessage)
-    
-    // Update conversation
-    const conv = conversations.value.find(c => c.id === conversationId)
-    if (conv) {
-      conv.lastMessage = text.substring(0, 50) + (text.length > 50 ? '...' : '')
-      conv.lastMessageTime = newMessage.timestamp
-      conv.unreadCount += 1
-    }
-    
-    saveMessages()
-    return newMessage
   }
 
-  const markConversationAsRead = (conversationId: number) => {
-    const conv = conversations.value.find(c => c.id === conversationId)
-    if (conv) {
-      conv.unreadCount = 0
+  const addMessage = async (conversationId: string, text: string) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const newMessage = await messageApi.sendMessage(conversationId, text)
+      
+      messages.value.push(newMessage)
+      
+      // Update conversation
+      const conv = conversations.value.find(c => c.id === conversationId)
+      if (conv) {
+        conv.lastMessage = text.substring(0, 50) + (text.length > 50 ? '...' : '')
+        conv.lastMessageTime = newMessage.timestamp
+      }
+      
+      return newMessage
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
     }
-    
-    messages.value
-      .filter(m => m.conversationId === conversationId)
-      .forEach(m => m.read = true)
-    
-    saveMessages()
   }
 
-  // Initialize on store creation
-  initializeMessages()
+  const markConversationAsRead = async (conversationId: string) => {
+    try {
+      await messageApi.markAsRead(conversationId)
+      
+      const conv = conversations.value.find(c => c.id === conversationId)
+      if (conv) {
+        conv.unreadCount = 0
+      }
+      
+      messages.value
+        .filter(m => m.conversationId === conversationId)
+        .forEach(m => m.read = true)
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    }
+  }
 
   return {
     messages,
     conversations,
+    isLoading,
+    error,
     allConversations,
     getConversationById,
     getConversationByPostId,
     getMessagesByConversation,
     unreadCount,
     createConversation,
+    loadMessages,
     addMessage,
     markConversationAsRead,
-    initializeMessages
+    initializeMessages,
   }
 })

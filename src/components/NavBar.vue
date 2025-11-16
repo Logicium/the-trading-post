@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useUserStore } from '../stores/user'
 
 const route = useRoute()
+const userStore = useUserStore()
 const mobileMenuOpen = ref(false)
 
 const toggleMobileMenu = () => {
@@ -41,6 +43,7 @@ const closeMobileMenu = () => {
             Bulletin Board
           </router-link>
           <router-link 
+            v-if="userStore.isAuthenticated"
             to="/messages" 
             class="nav-link"
             :class="{ active: route.path === '/messages' }"
@@ -48,6 +51,7 @@ const closeMobileMenu = () => {
             Messages
           </router-link>
           <router-link 
+            v-if="userStore.isAuthenticated"
             to="/profile" 
             class="nav-link"
             :class="{ active: route.path === '/profile' }"
@@ -58,8 +62,26 @@ const closeMobileMenu = () => {
         
         <!-- Auth Buttons -->
         <div class="navbar-actions">
-          <router-link to="/signup" class="btn btn-primary btn-nav">
+          <router-link 
+            v-if="!userStore.isAuthenticated"
+            to="/login" 
+            class="btn btn-secondary btn-nav"
+          >
+            Login
+          </router-link>
+          <router-link 
+            v-if="!userStore.isAuthenticated"
+            to="/signup" 
+            class="btn btn-primary btn-nav"
+          >
             Sign Up
+          </router-link>
+          <router-link 
+            v-if="userStore.isAuthenticated"
+            to="/new-post" 
+            class="btn btn-primary btn-nav"
+          >
+            New Post
           </router-link>
         </div>
         
@@ -96,6 +118,7 @@ const closeMobileMenu = () => {
           Bulletin Board
         </router-link>
         <router-link 
+          v-if="userStore.isAuthenticated"
           to="/messages" 
           class="mobile-nav-link"
           :class="{ active: route.path === '/messages' }"
@@ -104,6 +127,7 @@ const closeMobileMenu = () => {
           Messages
         </router-link>
         <router-link 
+          v-if="userStore.isAuthenticated"
           to="/profile" 
           class="mobile-nav-link"
           :class="{ active: route.path === '/profile' }"
@@ -112,6 +136,23 @@ const closeMobileMenu = () => {
           Profile
         </router-link>
         <router-link 
+          v-if="userStore.isAuthenticated"
+          to="/new-post" 
+          class="mobile-nav-link"
+          @click="closeMobileMenu"
+        >
+          New Post
+        </router-link>
+        <router-link 
+          v-if="!userStore.isAuthenticated"
+          to="/login" 
+          class="mobile-nav-link"
+          @click="closeMobileMenu"
+        >
+          Login
+        </router-link>
+        <router-link 
+          v-if="!userStore.isAuthenticated"
           to="/signup" 
           class="mobile-nav-link signup-link"
           @click="closeMobileMenu"

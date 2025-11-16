@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const formData = ref({
   name: '',
@@ -14,6 +16,7 @@ const formData = ref({
 })
 
 const errors = ref<Record<string, string>>({})
+const isSubmitting = ref(false)
 
 const validateForm = () => {
   errors.value = {}
@@ -41,12 +44,30 @@ const validateForm = () => {
   return Object.keys(errors.value).length === 0
 }
 
-const handleSubmit = () => {
-  if (validateForm()) {
-    // In a real app, this would call an API
-    console.log('Form submitted:', formData.value)
-    // Navigate to profile page
-    router.push('/profile')
+const handleSubmit = async () => {
+  if (!validateForm()) return
+  
+  isSubmitting.value = true
+  try {
+    // Sign up the user
+    await userStore.signup(formData.value.email, formData.value.password, formData.value.name)
+    
+    // Update profile with bio and skills if provided
+    if (formData.value.bio || formData.value.skills) {
+      const updates: any = {}
+      if (formData.value.bio) updates.bio = formData.value.bio
+      if (formData.value.skills) {
+        updates.skills = formData.value.skills.split(',').map(s => s.trim()).filter(s => s)
+      }
+      await userStore.updateUser(updates)
+    }
+    
+    // Navigate to home page
+    router.push('/')
+  } catch (error: any) {
+    errors.value.general = error.message || 'Failed to create account. Please try again.'
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
@@ -61,6 +82,10 @@ const handleSubmit = () => {
         </div>
         
         <form @submit.prevent="handleSubmit" class="signup-form card">
+          <div v-if="errors.general" class="error-banner">
+            {{ errors.general }}
+          </div>
+          
           <div class="form-section">
             <h3>Basic Information</h3>
             
@@ -139,8 +164,8 @@ const handleSubmit = () => {
             </div>
           </div>
           
-          <button type="submit" class="btn btn-primary btn-block">
-            Create Account
+          <button type="submit" class="btn btn-primary btn-block" :disabled="isSubmitting">
+            {{ isSubmitting ? 'Creating Account...' : 'Create Account' }}
           </button>
           
           <p class="form-footer">
@@ -157,6 +182,21 @@ const handleSubmit = () => {
   min-height: 100vh;
   padding: var(--spacing-xl) 0;
   background: var(--newsprint);
+}
+
+.error-banner {
+  padding: var(--spacing-md);
+  background-color: #ffe5e5;
+  border: 2px solid var(--accent-red);
+  margin-bottom: var(--spacing-md);
+  border-radius: 4px;
+  color: var(--accent-red);
+  font-weight: 500;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .signup-wrapper {

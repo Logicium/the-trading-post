@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 
+const router = useRouter()
 const userStore = useUserStore()
 
 // Use reactive reference to user from store
@@ -25,11 +27,20 @@ const toggleEdit = () => {
   isEditing.value = !isEditing.value
 }
 
-const saveProfile = () => {
-  userStore.updateUser(editForm.value)
-  isEditing.value = false
-  // In a real app, this would save to an API
-  console.log('Profile saved:', user.value)
+const saveProfile = async () => {
+  try {
+    await userStore.updateUser(editForm.value)
+    isEditing.value = false
+  } catch (error) {
+    console.error('Failed to save profile:', error)
+  }
+}
+
+const handleLogout = () => {
+  if (confirm('Are you sure you want to logout?')) {
+    userStore.signout()
+    router.push('/')
+  }
 }
 
 const addSkill = () => {
@@ -84,6 +95,9 @@ const removeSkill = (index: number) => {
             <button @click="saveProfile" class="btn btn-primary">Save Changes</button>
             <button @click="toggleEdit" class="btn btn-secondary">Cancel</button>
           </template>
+          <button @click="handleLogout" class="btn btn-logout">
+            Logout
+          </button>
         </div>
       </div>
       
@@ -436,6 +450,19 @@ const removeSkill = (index: number) => {
 .activity-badge.received {
   background-color: var(--black);
   color: var(--newsprint);
+}
+
+.btn-logout {
+  background-color: transparent;
+  color: var(--accent-red);
+  border: 2px solid var(--accent-red);
+}
+
+.btn-logout:hover {
+  background-color: var(--accent-red);
+  color: var(--newsprint);
+  transform: translateY(-2px);
+  box-shadow: 3px 3px 0 rgba(255, 0, 0, 0.3);
 }
 
 @media (max-width: 768px) {

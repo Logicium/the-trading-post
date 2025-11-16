@@ -72,7 +72,7 @@ const validateForm = () => {
   return isValid
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (validateForm()) {
     const currentUser = userStore.currentUser
     
@@ -82,8 +82,8 @@ const handleSubmit = () => {
       .map(t => t.trim())
       .filter(t => t.length > 0)
     
-    // Create new post
-    const newPost = postsStore.addPost({
+    // Create new post (backend will automatically create activity)
+    await postsStore.addPost({
       author: currentUser.name,
       title: form.value.title,
       description: form.value.description,
@@ -94,13 +94,8 @@ const handleSubmit = () => {
       tags
     })
     
-    // Add activity
-    activityStore.addPostActivity(
-      currentUser.email,
-      currentUser.name,
-      newPost.id,
-      newPost.title
-    )
+    // Refresh activities to show the new post activity
+    await activityStore.initializeActivities()
     
     // Navigate back to bulletin board
     router.push('/bulletin')

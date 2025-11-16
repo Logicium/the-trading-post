@@ -1,31 +1,41 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { mockPosts, type Post } from '../data/mockData'
+import { postApi } from '../services/api'
+
+export interface Post {
+  id: string
+  author: string
+  authorId: string
+  title: string
+  description: string
+  hours: number
+  type: 'offer' | 'request'
+  category: string
+  date: string
+  tags: string[]
+  active?: boolean
+}
 
 export const usePostsStore = defineStore('posts', () => {
   // State
   const posts = ref<Post[]>([])
+  const isLoading = ref<boolean>(false)
+  const error = ref<string | null>(null)
 
-  // Initialize from localStorage or use mock data
-  const initializePosts = () => {
-    const stored = localStorage.getItem('trading-post-posts')
-    if (stored) {
-      try {
-        posts.value = JSON.parse(stored)
-      } catch (e) {
-        console.error('Failed to parse posts from localStorage', e)
-        posts.value = [...mockPosts]
-        savePosts()
-      }
-    } else {
-      posts.value = [...mockPosts]
-      savePosts()
+  // Initialize posts from API
+  const initializePosts = async () => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const data = await postApi.getAllPosts()
+      posts.value = data
+    } catch (e: any) {
+      console.error('Failed to load posts', e)
+      error.value = e.message
+      posts.value = []
+    } finally {
+      isLoading.value = false
     }
-  }
-
-  // Save to localStorage
-  const savePosts = () => {
-    localStorage.setItem('trading-post-posts', JSON.stringify(posts.value))
   }
 
   // Getters
@@ -34,7 +44,7 @@ export const usePostsStore = defineStore('posts', () => {
   const requestPosts = computed(() => posts.value.filter(p => p.type === 'request'))
   
   const getPostById = computed(() => {
-    return (id: number) => posts.value.find(p => p.id === id)
+    return (id: string) => posts.value.find(p => p.id === id)
   })
 
   const recentPosts = computed(() => {
@@ -46,34 +56,78 @@ export const usePostsStore = defineStore('posts', () => {
   })
 
   // Actions
-  const addPost = (post: Omit<Post, 'id'>) => {
-    const newPost: Post = {
-      ...post,
-      id: Math.max(0, ...posts.value.map(p => p.id)) + 1
-    }
-    posts.value.unshift(newPost)
-    savePosts()
-    return newPost
-  }
-
-  const updatePost = (id: number, updates: Partial<Post>) => {
-    const index = posts.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      posts.value[index] = { ...posts.value[index], ...updates } as Post
-      savePosts()
+  const addPost = async (post: Omit<Post, 'id' | 'author' | 'authorId' | 'date' | 'active'>) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const newPost = await postApi.createPost(post)
+      posts.value.unshift(newPost)
+      return newPost
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const deletePost = (id: number) => {
-    posts.value = posts.value.filter(p => p.id !== id)
-    savePosts()
+  const updatePost = async (id: string, updates: Partial<Post>) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const updated = await postApi.updatePost(id, updates)
+      const index = posts.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        posts.value[index] = updated
+      }
+      return updated
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  // Initialize on store creation
-  initializePosts()
+  const deletePost = async (id: string) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      await postApi.deletePost(id)
+      posts.value = posts.value.filter(p => p.id !== id)
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const fetchPostById = async (id: string) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const post = await postApi.getPostById(id)
+      // Update or add post in local state
+      const index = posts.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        posts.value[index] = post
+      } else {
+        posts.value.push(post)
+      }
+      return post
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   return {
     posts,
+    isLoading,
+    error,
     allPosts,
     offerPosts,
     requestPosts,
@@ -82,6 +136,7 @@ export const usePostsStore = defineStore('posts', () => {
     addPost,
     updatePost,
     deletePost,
-    initializePosts
+    fetchPostById,
+    initializePosts,
   }
 })

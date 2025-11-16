@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { activityApi } from '../services/api'
 
 export interface ActivityItem {
-  id: number
+  id: string
   type: 'post_created' | 'connection_made'
   userId: string
   userName: string
-  postId?: number
+  postId?: string
   postTitle?: string
   targetUser?: string
   timestamp: string
@@ -15,23 +16,23 @@ export interface ActivityItem {
 export const useActivityStore = defineStore('activity', () => {
   // State
   const activities = ref<ActivityItem[]>([])
+  const isLoading = ref<boolean>(false)
+  const error = ref<string | null>(null)
 
-  // Initialize from localStorage
-  const initializeActivities = () => {
-    const stored = localStorage.getItem('trading-post-activities')
-    if (stored) {
-      try {
-        activities.value = JSON.parse(stored)
-      } catch (e) {
-        console.error('Failed to parse activities', e)
-        activities.value = []
-      }
+  // Initialize activities from API
+  const initializeActivities = async () => {
+    try {
+      isLoading.value = true
+      error.value = null
+      const data = await activityApi.getRecentActivities(20)
+      activities.value = data
+    } catch (e: any) {
+      console.error('Failed to load activities', e)
+      error.value = e.message
+      activities.value = []
+    } finally {
+      isLoading.value = false
     }
-  }
-
-  // Save to localStorage
-  const saveActivities = () => {
-    localStorage.setItem('trading-post-activities', JSON.stringify(activities.value))
   }
 
   // Getters
@@ -41,60 +42,11 @@ export const useActivityStore = defineStore('activity', () => {
       .slice(0, 10)
   })
 
-  // Actions
-  const addPostActivity = (userId: string, userName: string, postId: number, postTitle: string) => {
-    const activity: ActivityItem = {
-      id: Math.max(0, ...activities.value.map(a => a.id)) + 1,
-      type: 'post_created',
-      userId,
-      userName,
-      postId,
-      postTitle,
-      timestamp: new Date().toISOString()
-    }
-    
-    activities.value.unshift(activity)
-    
-    // Keep only last 100 activities
-    if (activities.value.length > 100) {
-      activities.value = activities.value.slice(0, 100)
-    }
-    
-    saveActivities()
-    return activity
-  }
-
-  const addConnectionActivity = (userId: string, userName: string, targetUser: string, postId: number, postTitle: string) => {
-    const activity: ActivityItem = {
-      id: Math.max(0, ...activities.value.map(a => a.id)) + 1,
-      type: 'connection_made',
-      userId,
-      userName,
-      targetUser,
-      postId,
-      postTitle,
-      timestamp: new Date().toISOString()
-    }
-    
-    activities.value.unshift(activity)
-    
-    // Keep only last 100 activities
-    if (activities.value.length > 100) {
-      activities.value = activities.value.slice(0, 100)
-    }
-    
-    saveActivities()
-    return activity
-  }
-
-  // Initialize on store creation
-  initializeActivities()
-
   return {
     activities,
+    isLoading,
+    error,
     recentActivities,
-    addPostActivity,
-    addConnectionActivity,
-    initializeActivities
+    initializeActivities,
   }
 })
