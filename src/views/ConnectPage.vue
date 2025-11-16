@@ -30,6 +30,9 @@ onMounted(async () => {
       const conv = await messagesStore.createConversation(postId)
       conversation.value = conv
       
+      // Load existing messages from backend
+      await messagesStore.loadMessages(conv.id)
+      
       // Pre-generate the initial connection message if no messages yet
       const existingMessages = messagesStore.getMessagesByConversation(conv.id)
       if (existingMessages.length === 0) {

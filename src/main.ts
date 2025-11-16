@@ -7,6 +7,7 @@ import './style.css'
 import { useUserStore } from './stores/user'
 import { usePostsStore } from './stores/posts'
 import { useActivityStore } from './stores/activity'
+import { useMessagesStore } from './stores/messages'
 
 const app = createApp(App)
 
@@ -18,6 +19,7 @@ app.use(router)
 const userStore = useUserStore()
 const postsStore = usePostsStore()
 const activityStore = useActivityStore()
+const messagesStore = useMessagesStore()
 
 // Initialize user from token
 userStore.initializeUser().then(() => {
@@ -25,6 +27,7 @@ userStore.initializeUser().then(() => {
   if (userStore.isAuthenticated) {
     postsStore.initializePosts()
     activityStore.initializeActivities()
+    messagesStore.initializeMessages()
   } else {
     // Still load posts for public viewing
     postsStore.initializePosts()
