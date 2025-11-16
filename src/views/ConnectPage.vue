@@ -75,6 +75,9 @@ const sendMessage = async () => {
       message.value
     )
 
+    // Reload messages to get the full updated list
+    await messagesStore.loadMessages(conversation.value.id)
+
     // Clear the input
     message.value = ''
   } catch (error) {

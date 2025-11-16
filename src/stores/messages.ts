@@ -123,14 +123,18 @@ export const useMessagesStore = defineStore('messages', () => {
       error.value = null
       const newMessage = await messageApi.sendMessage(conversationId, text)
       
+      // Add message to local state
       messages.value.push(newMessage)
       
-      // Update conversation
+      // Update conversation in local state
       const conv = conversations.value.find(c => c.id === conversationId)
       if (conv) {
         conv.lastMessage = text.substring(0, 50) + (text.length > 50 ? '...' : '')
         conv.lastMessageTime = newMessage.timestamp
       }
+      
+      // Reload conversations to get updated state from backend
+      await initializeMessages()
       
       return newMessage
     } catch (e: any) {
