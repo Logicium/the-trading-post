@@ -1,8 +1,9 @@
 // Mock data for The Trading Post application
 
 export interface Post {
-  id: number
+  id: string
   author: string
+  authorId?: string
   title: string
   description: string
   hours: number
@@ -10,6 +11,7 @@ export interface Post {
   category: string
   date: string
   tags: string[]
+  active?: boolean
 }
 
 export interface User {
@@ -33,7 +35,7 @@ export interface Activity {
 
 export const mockPosts: Post[] = [
   {
-    id: 1,
+    id: '1',
     author: 'Sarah Chen',
     title: 'Offering: Organic Vegetable Gardening Tips',
     description: 'I have 20 years of experience in organic gardening. Happy to help you start your own veggie garden or troubleshoot existing problems!',
@@ -44,7 +46,7 @@ export const mockPosts: Post[] = [
     tags: ['gardening', 'organic', 'vegetables']
   },
   {
-    id: 2,
+    id: '2',
     author: 'Marcus Johnson',
     title: 'Request: Help Moving Furniture',
     description: 'Need help moving some heavy furniture within my apartment this weekend. Should only take about an hour with two people.',
@@ -55,7 +57,7 @@ export const mockPosts: Post[] = [
     tags: ['moving', 'furniture', 'help']
   },
   {
-    id: 3,
+    id: '3',
     author: 'Emily Rodriguez',
     title: 'Offering: Spanish Language Tutoring',
     description: 'Native Spanish speaker offering conversational practice and grammar help. All levels welcome!',
@@ -66,7 +68,7 @@ export const mockPosts: Post[] = [
     tags: ['language', 'tutoring', 'spanish']
   },
   {
-    id: 4,
+    id: '4',
     author: 'David Kim',
     title: 'Offering: Basic Home Repairs',
     description: 'Handyman services for small repairs - fixing leaky faucets, hanging shelves, basic electrical work.',
@@ -77,7 +79,7 @@ export const mockPosts: Post[] = [
     tags: ['repair', 'handyman', 'home']
   },
   {
-    id: 5,
+    id: '5',
     author: 'Jessica Taylor',
     title: 'Request: Dog Walking Services',
     description: 'Looking for someone to walk my friendly golden retriever twice a week while I\'m at work. He loves long walks!',
@@ -88,7 +90,7 @@ export const mockPosts: Post[] = [
     tags: ['pets', 'dogs', 'walking']
   },
   {
-    id: 6,
+    id: '6',
     author: 'Alex Thompson',
     title: 'Offering: Web Design Consultation',
     description: 'Professional web designer offering free consultations and basic website setup help for small businesses or personal projects.',
@@ -99,7 +101,7 @@ export const mockPosts: Post[] = [
     tags: ['web design', 'technology', 'consultation']
   },
   {
-    id: 7,
+    id: '7',
     author: 'Rachel Green',
     title: 'Request: Baking Lessons',
     description: 'Would love to learn how to bake bread from scratch. Complete beginner looking for patient teacher!',
@@ -110,7 +112,7 @@ export const mockPosts: Post[] = [
     tags: ['baking', 'cooking', 'lessons']
   },
   {
-    id: 8,
+    id: '8',
     author: 'Michael Brown',
     title: 'Offering: Guitar Lessons',
     description: 'Teaching guitar for 10+ years. Acoustic or electric, all skill levels. Can teach music theory or just songs you want to learn.',
@@ -121,7 +123,7 @@ export const mockPosts: Post[] = [
     tags: ['music', 'guitar', 'lessons']
   },
   {
-    id: 9,
+    id: '9',
     author: 'Lisa Anderson',
     title: 'Request: Photography Session',
     description: 'Need professional headshots for my resume. Looking for someone with portrait photography experience.',
@@ -132,7 +134,7 @@ export const mockPosts: Post[] = [
     tags: ['photography', 'portraits', 'headshots']
   },
   {
-    id: 10,
+    id: '10',
     author: 'James Wilson',
     title: 'Offering: Math Tutoring',
     description: 'Former high school math teacher available for tutoring. Algebra through Calculus. Patient and experienced with all learning styles.',
@@ -143,7 +145,7 @@ export const mockPosts: Post[] = [
     tags: ['math', 'tutoring', 'education']
   },
   {
-    id: 11,
+    id: '11',
     author: 'Nina Patel',
     title: 'Request: Yoga Instruction',
     description: 'Beginner looking for one-on-one yoga sessions to learn proper form and build a home practice.',
@@ -154,7 +156,7 @@ export const mockPosts: Post[] = [
     tags: ['yoga', 'fitness', 'wellness']
   },
   {
-    id: 12,
+    id: '12',
     author: 'Tom Martinez',
     title: 'Offering: Car Maintenance Help',
     description: 'Can help with basic car maintenance: oil changes, tire rotation, brake pad replacement. Bring your own parts.',

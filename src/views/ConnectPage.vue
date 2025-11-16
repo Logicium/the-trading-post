@@ -18,45 +18,31 @@ const post = ref<Post | null>(null)
 const message = ref('')
 const conversation = ref<any>(null)
 
-onMounted(() => {
-  const postId = parseInt(route.params.postId as string)
+onMounted(async () => {
+  const postId = route.params.postId as string
   const foundPost = postsStore.getPostById(postId)
   
-  if (foundPost) {
+  if (foundPost && userStore.currentUser) {
     post.value = foundPost
     
-    // Get or create conversation
-    let conv = messagesStore.getConversationByPostId(postId)
-    if (!conv) {
-      conv = messagesStore.createConversation(
-        postId,
-        foundPost.title,
-        foundPost.author,
-        userStore.currentUser.name
-      )
+    // Create or get conversation via API
+    try {
+      const conv = await messagesStore.createConversation(postId)
+      conversation.value = conv
       
-      // Add connection activity
-      activityStore.addConnectionActivity(
-        userStore.currentUser.email,
-        userStore.currentUser.name,
-        foundPost.author,
-        postId,
-        foundPost.title
-      )
+      // Pre-generate the initial connection message if no messages yet
+      const existingMessages = messagesStore.getMessagesByConversation(conv.id)
+      if (existingMessages.length === 0) {
+        message.value = `${userStore.currentUser.name} wants to connect on "${foundPost.title}"`
+      }
+      
+      // Mark as read
+      await messagesStore.markConversationAsRead(conv.id)
+    } catch (error) {
+      console.error('Failed to create conversation:', error)
     }
-    
-    conversation.value = conv
-    
-    // Pre-generate the initial connection message if no messages yet
-    const existingMessages = messagesStore.getMessagesByConversation(conv.id)
-    if (existingMessages.length === 0) {
-      message.value = `${userStore.currentUser.name} wants to connect on "${foundPost.title}"`
-    }
-    
-    // Mark as read
-    messagesStore.markConversationAsRead(conv.id)
   } else {
-    // Post not found, redirect to bulletin
+    // Post not found or no user, redirect to bulletin
     router.push('/bulletin')
   }
 })
@@ -76,22 +62,21 @@ const getFormattedTime = (timestamp: string) => {
 const characterCount = computed(() => message.value.length)
 const canSend = computed(() => message.value.trim().length > 0)
 
-const sendMessage = () => {
-  if (!canSend.value || !post.value || !conversation.value) return
+const sendMessage = async () => {
+  if (!canSend.value || !post.value || !conversation.value || !userStore.currentUser) return
 
-  // Add message to store
-  messagesStore.addMessage(
-    conversation.value.id,
-    userStore.currentUser.email,
-    userStore.currentUser.name,
-    message.value
-  )
+  try {
+    // Add message via API
+    await messagesStore.addMessage(
+      conversation.value.id,
+      message.value
+    )
 
-  // Clear the input
-  message.value = ''
-
-  // In a real app, this would send to an API
-  console.log('Message sent')
+    // Clear the input
+    message.value = ''
+  } catch (error) {
+    console.error('Failed to send message:', error)
+  }
 }
 
 const goBack = () => {

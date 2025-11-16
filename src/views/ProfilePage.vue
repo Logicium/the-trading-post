@@ -10,7 +10,16 @@ const userStore = useUserStore()
 const user = computed(() => userStore.currentUser)
 
 const isEditing = ref(false)
-const editForm = ref({ ...user.value })
+const editForm = ref({ 
+  name: user.value?.name || '',
+  email: user.value?.email || '',
+  bio: user.value?.bio || '',
+  skills: user.value?.skills || [],
+  joinDate: user.value?.joinDate || '',
+  timeBalance: user.value?.timeBalance || 0,
+  completedTrades: user.value?.completedTrades || 0,
+  rating: user.value?.rating || 0
+})
 
 const recentActivity = ref([
   { id: 1, type: 'offered' as 'offered' | 'received', title: 'Guitar lesson for beginners', hours: 2, date: 'Nov 10, 2025' },
@@ -21,8 +30,33 @@ const recentActivity = ref([
 
 const toggleEdit = () => {
   if (isEditing.value) {
-    // Cancel editing
-    editForm.value = { ...user.value }
+    // Cancel editing - restore from user
+    if (user.value) {
+      editForm.value = {
+        name: user.value.name,
+        email: user.value.email,
+        bio: user.value.bio || '',
+        skills: [...user.value.skills],
+        joinDate: user.value.joinDate,
+        timeBalance: user.value.timeBalance,
+        completedTrades: user.value.completedTrades,
+        rating: user.value.rating
+      }
+    }
+  } else {
+    // Start editing - copy current user data
+    if (user.value) {
+      editForm.value = {
+        name: user.value.name,
+        email: user.value.email,
+        bio: user.value.bio || '',
+        skills: [...user.value.skills],
+        joinDate: user.value.joinDate,
+        timeBalance: user.value.timeBalance,
+        completedTrades: user.value.completedTrades,
+        rating: user.value.rating
+      }
+    }
   }
   isEditing.value = !isEditing.value
 }
@@ -45,18 +79,20 @@ const handleLogout = () => {
 
 const addSkill = () => {
   const skill = prompt('Enter a new skill:')
-  if (skill && skill.trim()) {
+  if (skill && skill.trim() && editForm.value.skills) {
     editForm.value.skills.push(skill.trim())
   }
 }
 
 const removeSkill = (index: number) => {
-  editForm.value.skills.splice(index, 1)
+  if (editForm.value.skills) {
+    editForm.value.skills.splice(index, 1)
+  }
 }
 </script>
 
 <template>
-  <div class="profile-page">
+  <div class="profile-page" v-if="user">
     <div class="container">
       <!-- Profile Header -->
       <div class="profile-header card">

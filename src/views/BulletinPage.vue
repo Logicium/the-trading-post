@@ -30,7 +30,7 @@ const goToNewPost = () => {
   router.push('/new-post')
 }
 
-const connectWithPost = (postId: number) => {
+const connectWithPost = (postId: string) => {
   router.push(`/connect/${postId}`)
 }
 </script>

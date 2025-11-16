@@ -73,7 +73,7 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
-  if (validateForm()) {
+  if (validateForm() && userStore.currentUser) {
     const currentUser = userStore.currentUser
     
     // Parse tags
@@ -84,13 +84,11 @@ const handleSubmit = async () => {
     
     // Create new post (backend will automatically create activity)
     await postsStore.addPost({
-      author: currentUser.name,
       title: form.value.title,
       description: form.value.description,
       hours: form.value.hours,
       type: form.value.type,
       category: form.value.category,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       tags
     })
     

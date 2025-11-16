@@ -27,7 +27,7 @@ const getTimeAgo = (timestamp: string) => {
   return `${days}d ago`
 }
 
-const openConversation = (postId: number) => {
+const openConversation = (postId: string) => {
   router.push(`/connect/${postId}`)
 }
 
