@@ -67,10 +67,9 @@ export const useMessagesStore = defineStore('messages', () => {
     return (postId: string) => conversations.value.find(c => c.postId === postId)
   })
 
-  const getMessagesByConversation = computed(() => {
-    return (conversationId: string) => 
-      messages.value.filter(m => m.conversationId === conversationId)
-  })
+  const getMessagesByConversation = (conversationId: string) => {
+    return messages.value.filter(m => m.conversationId === conversationId)
+  }
 
   const unreadCount = computed(() => {
     return conversations.value.reduce((sum, conv) => sum + conv.unreadCount, 0)

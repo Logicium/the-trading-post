@@ -55,6 +55,11 @@ const messageHistory = computed(() => {
   return messagesStore.getMessagesByConversation(conversation.value.id)
 })
 
+const otherParticipantName = computed(() => {
+  if (!conversation.value || !userStore.currentUser) return ''
+  return conversation.value.otherParticipant?.name || ''
+})
+
 const getFormattedTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString('en-US', { 
     hour: 'numeric', 
@@ -95,7 +100,7 @@ const goBack = () => {
     <div class="container">
       <div class="page-header">
         <button @click="goBack" class="btn-back">← Back to Bulletin</button>
-        <h1 class="page-title">Connect with {{ post.author }}</h1>
+        <h1 class="page-title">Connect with {{ otherParticipantName || post.author }}</h1>
       </div>
 
       <div class="connect-content">
@@ -145,7 +150,7 @@ const goBack = () => {
 
           <!-- Empty State -->
           <div class="message-empty" v-else>
-            <p>Start the conversation by sending a message to {{ post.author }}</p>
+            <p>Start the conversation by sending a message to {{ otherParticipantName || post.author }}</p>
           </div>
 
           <!-- Message Input -->
