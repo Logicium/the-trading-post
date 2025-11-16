@@ -25,24 +25,32 @@ onMounted(async () => {
   if (foundPost && userStore.currentUser) {
     post.value = foundPost
     
-    // Create or get conversation via API
+    // Check if conversation already exists in local store
+    const existingConv = messagesStore.getConversationByPostId(postId)
+    
     try {
-      const conv = await messagesStore.createConversation(postId)
-      conversation.value = conv
+      if (existingConv) {
+        // Use existing conversation without calling API
+        conversation.value = existingConv
+      } else {
+        // Create new conversation via API
+        const conv = await messagesStore.createConversation(postId)
+        conversation.value = conv
+      }
       
       // Load existing messages from backend
-      await messagesStore.loadMessages(conv.id)
+      await messagesStore.loadMessages(conversation.value.id)
       
       // Pre-generate the initial connection message if no messages yet
-      const existingMessages = messagesStore.getMessagesByConversation(conv.id)
+      const existingMessages = messagesStore.getMessagesByConversation(conversation.value.id)
       if (existingMessages.length === 0) {
         message.value = `${userStore.currentUser.name} wants to connect on "${foundPost.title}"`
       }
       
       // Mark as read
-      await messagesStore.markConversationAsRead(conv.id)
+      await messagesStore.markConversationAsRead(conversation.value.id)
     } catch (error) {
-      console.error('Failed to create conversation:', error)
+      console.error('Failed to load conversation:', error)
     }
   } else {
     // Post not found or no user, redirect to bulletin
