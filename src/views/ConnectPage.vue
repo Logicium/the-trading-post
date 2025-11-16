@@ -5,6 +5,7 @@ import { usePostsStore } from '../stores/posts'
 import { useUserStore } from '../stores/user'
 import { useMessagesStore } from '../stores/messages'
 import { useActivityStore } from '../stores/activity'
+import { transactionApi } from '../services/api'
 import type { Post } from '../data/mockData'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ const activityStore = useActivityStore()
 const post = ref<Post | null>(null)
 const message = ref('')
 const conversation = ref<any>(null)
+const transaction = ref<any>(null)
 
 onMounted(async () => {
   const postId = route.params.postId as string
@@ -40,6 +42,14 @@ onMounted(async () => {
       
       // Load existing messages from backend
       await messagesStore.loadMessages(conversation.value.id)
+      
+      // Load or create transaction for this post
+      try {
+        const txn = await transactionApi.getOrCreateTransactionForPost(postId)
+        transaction.value = txn
+      } catch (error) {
+        console.error('Failed to load transaction:', error)
+      }
       
       // Pre-generate the initial connection message if no messages yet
       const existingMessages = messagesStore.getMessagesByConversation(conversation.value.id)
@@ -67,6 +77,64 @@ const otherParticipantName = computed(() => {
   if (!conversation.value || !userStore.currentUser) return ''
   return conversation.value.otherParticipant?.name || ''
 })
+
+const canConfirmTransaction = computed(() => {
+  if (!transaction.value || !post.value || !userStore.currentUser) return false
+  
+  // If transaction is already completed, can't confirm again
+  if (transaction.value.status === 'completed') return false
+  
+  // For OFFER posts: Person who connected (receiver) confirms
+  if (post.value.type === 'offer') {
+    return transaction.value.receiver.id === userStore.currentUser.id && !transaction.value.receiverConfirmed
+  }
+  
+  // For REQUEST posts: Post author (receiver) confirms
+  if (post.value.type === 'request') {
+    return transaction.value.receiver.id === userStore.currentUser.id && !transaction.value.receiverConfirmed
+  }
+  
+  return false
+})
+
+const transactionStatusText = computed(() => {
+  if (!transaction.value) return ''
+  
+  if (transaction.value.status === 'completed') {
+    return '✓ Transaction completed'
+  }
+  
+  if (transaction.value.providerConfirmed && !transaction.value.receiverConfirmed) {
+    return 'Waiting for confirmation from receiver'
+  }
+  
+  if (!transaction.value.providerConfirmed && transaction.value.receiverConfirmed) {
+    return 'Waiting for confirmation from provider'
+  }
+  
+  return 'Waiting for confirmation'
+})
+
+const confirmTransaction = async () => {
+  if (!transaction.value || !canConfirmTransaction.value) return
+  
+  if (!confirm('Confirm that this service has been completed? This will transfer time credits.')) {
+    return
+  }
+  
+  try {
+    const updated = await transactionApi.confirmTransaction(transaction.value.id)
+    transaction.value = updated
+    
+    // Refresh user data to show updated balance
+    await userStore.refreshUser()
+    
+    alert('Transaction confirmed! Time credits have been updated.')
+  } catch (error) {
+    console.error('Failed to confirm transaction:', error)
+    alert('Failed to confirm transaction. Please try again.')
+  }
+}
 
 const getFormattedTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString('en-US', { 
@@ -139,7 +207,21 @@ const goBack = () => {
 
         <!-- Message Interface -->
         <div class="message-section card">
-          <h2>Send a Message</h2>
+          <div class="section-header-with-status">
+            <h2>Send a Message</h2>
+            <div v-if="transaction" class="transaction-status">
+              <span class="status-text" :class="{ completed: transaction.status === 'completed' }">
+                {{ transactionStatusText }}
+              </span>
+              <button 
+                v-if="canConfirmTransaction" 
+                @click="confirmTransaction" 
+                class="btn btn-primary btn-sm"
+              >
+                Confirm Service Completed
+              </button>
+            </div>
+          </div>
           
           <!-- Message History -->
           <div class="message-history" v-if="messageHistory.length > 0">
@@ -356,6 +438,40 @@ const goBack = () => {
   text-transform: uppercase;
   border-bottom: 2px solid var(--newspaper-line);
   padding-bottom: var(--spacing-sm);
+}
+
+.section-header-with-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--newspaper-line);
+  padding-bottom: var(--spacing-sm);
+}
+
+.section-header-with-status h2 {
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.transaction-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.status-text {
+  font-family: 'Libre Franklin', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dark-gray);
+}
+
+.status-text.completed {
+  color: var(--accent-teal);
 }
 
 .message-history {

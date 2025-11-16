@@ -169,6 +169,9 @@ export const transactionApi = {
 
   getUserTransactions: () => apiFetch('/transactions'),
 
+  getOrCreateTransactionForPost: (postId: string) => 
+    apiFetch(`/transactions/post/${postId}`),
+
   getTransactionById: (id: string) => apiFetch(`/transactions/${id}`),
 
   confirmTransaction: (id: string) =>
